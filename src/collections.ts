@@ -10,6 +10,18 @@ import { join, dirname } from "path";
 import { homedir } from "os";
 import YAML from "yaml";
 
+// ---------------------------------------------------------------------------
+// Zero-trust key validation -- prevent prototype pollution via user-supplied
+// collection names and path prefixes used as object keys.
+// ---------------------------------------------------------------------------
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function assertSafeKey(key: string, label: string): void {
+  if (FORBIDDEN_KEYS.has(key)) {
+    throw new Error(`Invalid ${label} '${key}': reserved key name not allowed`);
+  }
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -271,6 +283,7 @@ export function addCollection(
   path: string,
   pattern: string = "**/*.md"
 ): void {
+  assertSafeKey(name, "collection name");
   const config = loadConfig();
 
   config.collections[name] = {
@@ -301,6 +314,8 @@ export function removeCollection(name: string): boolean {
  * Rename a collection
  */
 export function renameCollection(oldName: string, newName: string): boolean {
+  assertSafeKey(oldName, "collection name");
+  assertSafeKey(newName, "collection name");
   const config = loadConfig();
 
   if (!config.collections[oldName]) {
@@ -354,6 +369,8 @@ export function addContext(
   pathPrefix: string,
   contextText: string
 ): boolean {
+  assertSafeKey(collectionName, "collection name");
+  assertSafeKey(pathPrefix, "path prefix");
   const config = loadConfig();
   const collection = config.collections[collectionName];
 
@@ -362,7 +379,9 @@ export function addContext(
   }
 
   if (!collection.context) {
-    collection.context = {};
+    // Object.create(null) produces a null-prototype object -- defence-in-depth
+    // against prototype pollution even if the key guard above is bypassed.
+    collection.context = Object.create(null) as Record<string, string>;
   }
 
   collection.context[pathPrefix] = contextText;

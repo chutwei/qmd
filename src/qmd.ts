@@ -1,7 +1,7 @@
 import { openDatabase } from "./db.js";
 import type { Database } from "./db.js";
 import fastGlob from "fast-glob";
-import { execSync, spawn as nodeSpawn } from "child_process";
+import { spawnSync, spawn as nodeSpawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join as pathJoin } from "path";
 import { parseArgs } from "util";
@@ -1777,7 +1777,13 @@ type OutputOptions = {
 // Highlight query terms in text (skip short words < 3 chars)
 function highlightTerms(text: string, query: string): string {
   if (!useColor) return text;
-  const terms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 3);
+  const MAX_HIGHLIGHT_TERMS = 50;
+  const MAX_TERM_LENGTH = 200;
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && t.length <= MAX_TERM_LENGTH)
+    .slice(0, MAX_HIGHLIGHT_TERMS);
   let result = text;
   for (const term of terms) {
     const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -2554,7 +2560,15 @@ async function showVersion(): Promise<void> {
 
   let commit = "";
   try {
-    commit = execSync(`git -C ${scriptDir} rev-parse --short HEAD`, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+    // Use spawnSync with an array -- no shell interpretation, word splitting, or glob expansion.
+    const result = spawnSync(
+      "git",
+      ["-C", scriptDir, "rev-parse", "--short", "HEAD"],
+      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+    );
+    if (result.status === 0 && result.stdout) {
+      commit = result.stdout.trim();
+    }
   } catch {
     // Not a git repo or git not available
   }

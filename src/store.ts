@@ -746,6 +746,14 @@ export function isSqliteVecAvailable(): boolean {
 }
 
 function ensureVecTableInternal(db: Database, dimensions: number): void {
+  // Validate before any use in DDL -- SQLite does not support bind parameters
+  // in CREATE TABLE statements, so the value is interpolated directly.
+  if (!Number.isInteger(dimensions) || dimensions < 1 || dimensions > 65536) {
+    throw new Error(
+      `Invalid embedding dimensions: ${dimensions}. Must be a positive integer between 1 and 65536.`
+    );
+  }
+
   if (!_sqliteVecAvailable) {
     throw new Error("sqlite-vec is not available. Vector operations require a SQLite build with extension loading support.");
   }
