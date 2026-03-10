@@ -697,7 +697,8 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
         const body = JSON.parse(rawBody);
         const label = describeRequest(body);
         const url = `http://localhost:${port}${pathname}`;
-        const headers: Record<string, string> = {};
+        // Use Object.create(null) to prevent __proto__ header from polluting Object.prototype
+        const headers = Object.create(null) as Record<string, string>;
         for (const [k, v] of Object.entries(nodeReq.headers)) {
           if (typeof v === "string") headers[k] = v;
         }
@@ -740,7 +741,8 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
       }
 
       if (pathname === "/mcp") {
-        const headers: Record<string, string> = {};
+        // Use Object.create(null) to prevent __proto__ header from polluting Object.prototype
+        const headers = Object.create(null) as Record<string, string>;
         for (const [k, v] of Object.entries(nodeReq.headers)) {
           if (typeof v === "string") headers[k] = v;
         }
